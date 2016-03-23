@@ -1,0 +1,12 @@
+ata0-master: type=cdrom, path="build/os.iso", status=inserted
+boot: cdrom
+com1: enabled=1, mode=file, dev=build/debug.log
+cpu: model=corei5_lynnfield_750
+memory: guest=1024, host=1024
+vga: extension=vbe
+magic_break: enabled=1
+display_library: x
+
+log: -
+debugger_log: -
+debug: action=report
