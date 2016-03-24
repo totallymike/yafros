@@ -20,12 +20,13 @@ all: $(kernel)
 clean:
 	@rm -r build
 
-run: @(iso)
-	@$(qemu) -cdrom $(iso)
+run: $(iso)
+	echo $(qemu)
+	$(qemu) -cdrom $(iso)
 
 $(iso): $(kernel) $(grub_cfg)
 	@mkdir -p build/isofiles/boot/grub
-	@cp $(kernel) bulid/isofiles/boot/kernel.bin
+	@cp $(kernel) build/isofiles/boot/kernel.bin
 	@cp $(grub_cfg) build/isofiles/boot/grub
 	@grub-mkrescue -o $(iso) build/isofiles 2> /dev/null
 	@rm -r build/isofiles
