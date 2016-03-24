@@ -12,10 +12,8 @@ start:
   call check_long_mode
 
   call disable_paging
-  XCHG BX, BX
   call set_up_page_tables
-  call enable_paging
-  hlt
+  XCHG BX, BX
 
   mov word [0xb8000], 0x0248    ; H
   mov word [0xb8002], 0x0265    ; e
@@ -48,35 +46,28 @@ disable_paging:
   ret
 
 set_up_page_tables:
-  ; Map first P4 entry to P3 table
-  mov eax, p3_table
-  or eax, 0b11                  ; Present + writeable
-  mov [p4_table], eax
+  mov edi, 0x1000               ; Set destination index to 0x1000
+  mov cr3, edi
+  xor eax, eax
+  mov ecx, 4096
+  rep stosd
+  mov edi, cr3
 
-  ; Map first P3 entry to P2 table
-  mov eax, p2_table
-  or eax, 0b11                  ; present + writable
-  mov [p3_table], eax
+  mov DWORD [edi], 0x2003
+  add edi, 0x1000
+  mov DWORD [edi], 0x3003
+  add edi, 0x1000
+  mov DWORD [edi], 0x4003
+  add edi, 0x1000
 
-  mov ecx, 0
-.map_p2_table:
-  ; map ecx-th P2 entry to a huge page that starts at
-  ; 2MiB*ecx
-  mov eax, 0x200000             ; 2MiB
-  mul ecx                       ; Start address of ecx-th page
-  or eax, 0x10000011            ; present, writable, and HUGE
-  mov [p2_table + ecx * 8], eax ; Map ecx-th entry
+  mov ebx, 0x00000003
+  mov ecx, 512
 
-  inc ecx                       ; Increase counter
-  cmp ecx, 512                  ; If counter == 512, finished
-  jne .map_p2_table
-
-  ret
-
-enable_paging:
-  ; Load P4 to cr3 register (cpu uses this to access the P4 table)
-  mov eax, p4_table
-  mov cr3, eax
+.SetEntry:
+  mov DWORD [edi], ebx
+  add ebx, 0x1000
+  add edi, 8
+  loop .SetEntry
 
   ; Enable PAE flag in CR4 (Physical address extension)
   mov eax, cr4
@@ -92,19 +83,11 @@ enable_paging:
   ; Enable paging in the CR0 register
   mov eax, cr0
   or eax, 1 << 31
-  XCHG BX, BX
   mov cr0, eax
 
   ret
 
 SECTION .bss
-ALIGN 4096
-p4_table:
-  resb 4096
-p3_table:
-  resb 4096
-p2_table:
-  resb 4096
 stack_bottom:
   resb 64
 stack_top:
