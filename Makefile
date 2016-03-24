@@ -38,8 +38,12 @@ build/long_mode.o: long_mode.asm
 	mkdir -p build
 	$(AS) $(NASMARGS) long_mode.asm -o build/long_mode.o
 
-build/kernel.bin: build/multiboot_header.o build/boot.o build/error.o build/long_mode.o linker.ld
-	$(LD) -n -o build/kernel.bin -T linker.ld build/multiboot_header.o build/error.o build/long_mode.o build/boot.o
+build/long_mode_start.o: long_mode_start.asm
+	mkdir -p build
+	$(AS) $(NASMARGS) long_mode_start.asm -o build/long_mode_start.o
+
+build/kernel.bin: build/multiboot_header.o build/boot.o build/error.o build/long_mode_start.o build/long_mode.o linker.ld
+	$(LD) -n -o build/kernel.bin -T linker.ld build/multiboot_header.o build/error.o build/long_mode_start.o build/long_mode.o build/boot.o
 
 .PHONY: clean
 clean:
