@@ -1,50 +1,39 @@
-ARCH?=x86_64
+ld = $(arch)-pc-elf-ld
+nasmargs = -f elf64 -g
 
-QEMU?=qemu-system-$(ARCH)
+arch ?= x86_64
+kernel := build/kernel-$(arch).bin
+iso := build/os-$(arch).iso
 
-AS=nasm
-LD=$(ARCH)-pc-elf-ld
-NASMARGS=-f elf64 -g
+linker_script := src/arch/$(arch)/linker.ld
+grub_cfg := src/arch/$(arch)/grub.cfg
+assembly_source_files := $(wildcard src/arch/$(arch)/*.asm)
+assembly_object_files := $(patsubst src/arch/$(arch)/%.asm, \
+	build/arch/$(arch)/%.o, $(assembly_source_files))
 
-default: run
+qemu ?= qemu-system-$(arch)
 
-build: build/os.iso
+.PHONY: all clean run iso
 
-run: build/os.iso
-	$(QEMU) -cdrom build/os.iso
+all: $(kernel)
 
-debug: build/os.iso
-	$(QEMU) -s -S -cdrom build/os.iso
-
-build/os.iso: build/kernel.bin grub.cfg
-	mkdir -p build/isofiles/boot/grub
-	cp grub.cfg build/isofiles/boot/grub
-	cp build/kernel.bin build/isofiles/boot/
-	grub-mkrescue -o build/os.iso build/isofiles
-
-build/multiboot_header.o: multiboot_header.asm
-	mkdir -p build
-	$(AS) $(NASMARGS) multiboot_header.asm -o build/multiboot_header.o
-
-build/boot.o: boot.asm
-	mkdir -p build
-	$(AS) $(NASMARGS) boot.asm -o build/boot.o
-
-build/error.o: error.asm
-	mkdir -p build
-	$(AS) $(NASMARGS) error.asm -o build/error.o
-
-build/long_mode.o: long_mode.asm
-	mkdir -p build
-	$(AS) $(NASMARGS) long_mode.asm -o build/long_mode.o
-
-build/long_mode_start.o: long_mode_start.asm
-	mkdir -p build
-	$(AS) $(NASMARGS) long_mode_start.asm -o build/long_mode_start.o
-
-build/kernel.bin: build/multiboot_header.o build/boot.o build/error.o build/long_mode_start.o build/long_mode.o linker.ld
-	$(LD) -n -o build/kernel.bin -T linker.ld build/multiboot_header.o build/error.o build/long_mode_start.o build/long_mode.o build/boot.o
-
-.PHONY: clean
 clean:
-	rm -rf build
+	@rm -r build
+
+run: @(iso)
+	@$(qemu) -cdrom $(iso)
+
+$(iso): $(kernel) $(grub_cfg)
+	@mkdir -p build/isofiles/boot/grub
+	@cp $(kernel) bulid/isofiles/boot/kernel.bin
+	@cp $(grub_cfg) build/isofiles/boot/grub
+	@grub-mkrescue -o $(iso) build/isofiles 2> /dev/null
+	@rm -r build/isofiles
+
+$(kernel): $(assembly_object_files) $(linker_script)
+	@$(ld) -n -T $(linker_script) -o $(kernel) $(assembly_object_files)
+
+build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm
+	@mkdir -p $(shell dirname $@)
+	@nasm $(nasmargs) $< -o $@
+
