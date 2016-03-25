@@ -26,6 +26,9 @@ start:
   mov ss, ax                    ; Stack selector
   mov ds, ax                    ; Data selector
   mov es, ax                    ; Extra selector
+
+  ; Magic debug instruction
+  ; gets bochs to pause here, otherwise does nothing
   XCHG BX, BX
 
   jmp gdt64.code:long_mode_start
